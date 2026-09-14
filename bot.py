@@ -2,6 +2,8 @@ from io import BytesIO
 import json
 import logging
 import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 import secrets
 from datetime import datetime, timezone
@@ -1233,7 +1235,20 @@ def get_bot_token() -> str:
             "environment variable before starting the bot."
         )
     return token
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
 
+    def log_message(self, format, *args):
+        pass
+
+
+def run_health_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    server.serve_forever()
 
 def main() -> None:
     """Build and run the bot with long polling."""
@@ -1257,7 +1272,7 @@ def main() -> None:
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, admin_plan_message)
     )
-
+    threading.Thread(target=run_health_server, daemon=True).start()
     LOGGER.info("PRIME PANEL BOT is starting.")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
