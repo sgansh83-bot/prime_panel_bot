@@ -1,1 +1,0 @@
-# prime_panel_bot
